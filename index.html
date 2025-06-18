@@ -1,164 +1,173 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <title>Antennes 5G</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+  
+  <title>Évolution des Antennes 5G (2023 vs 2025)</title>
+  <!-- Ensure Chart.js and datalabels plugin are included only once in your page -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #fff;
-      color: #333;
+    .charts-wrapper-5g {
+      display: flex;
+      justify-content: center;
+      margin: 20px auto;
+      max-width: 800px;
     }
 
-    .chart-container {
+    .chart-container-5g {
       width: 100%;
-      max-width: 900px;
-      margin: 0 auto;
+      max-width: 800px;
       padding: 10px;
+      box-sizing: border-box;
     }
 
-    canvas {
+    #evolutionChart5G {
       width: 100% !important;
-      height: 500px !important;
+      height: 400px !important;
       display: block;
     }
   </style>
 </head>
 <body>
-
-  <div class="chart-container">
-    <canvas id="antennaChart"></canvas>
+  <!-- Place this where you want the new chart, e.g., after your other charts -->
+  <div class="charts-wrapper-5g">
+    <div class="chart-container-5g">
+      <canvas id="evolutionChart5G"></canvas>
+    </div>
   </div>
 
   <script>
-    const urls = {
-      Sunrise: 'https://raw.githubusercontent.com/AntenneCarte/antenne5g/main/Sunrise-5G.geojson',
-      Salt: 'https://raw.githubusercontent.com/AntenneCarte/antenne5g/main/Salt-5G.geojson',
-      Swisscom: 'https://raw.githubusercontent.com/AntenneCarte/antenne5g/main/Swisscom-5G.geojson'
-    };
+    (function() {
+      document.addEventListener('DOMContentLoaded', function() {
+        // Skip if Chart.js or plugin is not available
+        if (!window.Chart || !window.ChartDataLabels) {
+          console.error("Chart.js or ChartDataLabels plugin not loaded");
+          return;
+        }
 
-    const freqLabels = ["750 MHz", "950 MHz", "2100 MHz", "3500 MHz"];
+        Chart.register(ChartDataLabels);
 
-    const operatorColors = {
-      Sunrise: 'rgba(255, 0, 0, 0.6)',
-      Salt: 'rgba(0, 128, 0, 0.6)',
-      Swisscom: 'rgba(0, 0, 255, 0.6)'
-    };
-
-    const borderColors = {
-      Sunrise: 'rgba(255, 0, 0, 1)',
-      Salt: 'rgba(0, 128, 0, 1)',
-      Swisscom: 'rgba(0, 0, 255, 1)'
-    };
-
-    function getFrequencyGroup(freq) {
-      if (freq < 900) return 0;
-      else if (freq <= 1000) return 1;
-      else if (freq <= 3000) return 2;
-      else return 3;
-    }
-
-    async function loadData() {
-      const operatorData = {
-        Sunrise: [0, 0, 0, 0],
-        Salt: [0, 0, 0, 0],
-        Swisscom: [0, 0, 0, 0]
-      };
-
-      for (const operator in urls) {
-        const res = await fetch(urls[operator]);
-        const data = await res.json();
-        data.features.forEach(feature => {
-          if (feature.geometry.type === "Point") {
-            const props = feature.properties;
-            const freqStr = props["frequency (MHz)"] || "0 MHz";
-            const freq = parseFloat(freqStr.replace(/[^\d.]/g, '')) || 0;
-            const group = getFrequencyGroup(freq);
-            operatorData[operator][group]++;
-          }
-        });
-      }
-
-      return operatorData;
-    }
-
-    function renderChart(data) {
-      const ctx = document.getElementById("antennaChart").getContext("2d");
-
-      const datasets = Object.keys(data).map(operator => ({
-        label: operator,
-        data: data[operator],
-        backgroundColor: operatorColors[operator],
-        borderColor: borderColors[operator],
-        borderWidth: 1
-      }));
-
-      new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: freqLabels,
-          datasets: datasets
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          indexAxis: 'y',
-          layout: {
-            padding: 0
+        const geojsonURLs = {
+          2023: {
+            Sunrise: 'https://raw.githubusercontent.com/AntenneCarte/antenne5g/main/Sunrise-5G.geojson',
+            Salt: 'https://raw.githubusercontent.com/AntenneCarte/antenne5g/main/Salt-5G.geojson',
+            Swisscom: 'https://raw.githubusercontent.com/AntenneCarte/antenne5g/main/Swisscom-5G.geojson'
           },
-          plugins: {
-            legend: {
-              display: true,
-              position: 'top',
-              labels: {
-                boxWidth: 10,
-                font: {
-                  size: 12
+          2025: {
+            Sunrise: 'https://raw.githubusercontent.com/AntenneCarte/1/main/Sunrise_5G.geojson',
+            Salt: 'https://raw.githubusercontent.com/AntenneCarte/1/main/Salt_5G.geojson',
+            Swisscom: 'https://raw.githubusercontent.com/AntenneCarte/1/main/Swisscom_5G.geojson'
+          }
+        };
+
+        const freqLabels = ["750 MHz", "950 MHz", "2100 MHz", "3500 MHz"];
+        const operators = ["Sunrise", "Salt", "Swisscom"];
+        const years = ["2023", "2025"];
+
+        const colors = {
+          "Sunrise_2023": 'rgba(255, 0, 0, 0.4)',
+          "Sunrise_2025": 'rgba(255, 0, 0, 0.8)',
+          "Salt_2023": 'rgba(0, 128, 0, 0.4)',
+          "Salt_2025": 'rgba(0, 128, 0, 0.8)',
+          "Swisscom_2023": 'rgba(0, 0, 255, 0.4)',
+          "Swisscom_2025": 'rgba(0, 0, 255, 0.8)'
+        };
+
+        async function loadData(year) {
+          const operatorData = {
+            Sunrise: [0, 0, 0, 0],
+            Salt: [0, 0, 0, 0],
+            Swisscom: [0, 0, 0, 0]
+          };
+
+          for (const operator in geojsonURLs[year]) {
+            try {
+              const res = await fetch(geojsonURLs[year][operator]);
+              if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+              const data = await res.json();
+              if (!data.features) throw new Error(`Invalid GeoJSON data for ${operator} ${year}`);
+              data.features.forEach(feature => {
+                if (feature.geometry?.type === "Point") {
+                  const props = feature.properties || {};
+                  const freqStr = props["frequency (MHz)"] || "0 MHz";
+                  const freq = parseFloat(freqStr.replace(/[^\d.]/g, '')) || 0;
+                  const group = getFrequencyGroup(freq);
+                  operatorData[operator][group]++;
+                }
+              });
+            } catch (err) {
+              console.error(`Error loading data for ${operator} ${year}:`, err.message);
+            }
+          }
+          return operatorData;
+        }
+
+        function getFrequencyGroup(freq) {
+          if (freq < 900) return 0; // 700-800 MHz → 750 MHz
+          else if (freq <= 1000) return 1; // 900 MHz → 950 MHz
+          else if (freq <= 2300) return 2; // 1400-2100 MHz → 2100 MHz
+          else return 3; // 2600-3500 MHz → 3500 MHz
+        }
+
+        function renderChart(data2023, data2025) {
+          const ctx = document.getElementById("evolutionChart5G")?.getContext("2d");
+          if (!ctx) {
+            console.error("Canvas context for evolutionChart5G not found");
+            return;
+          }
+
+          const datasets = [];
+          operators.forEach(operator => {
+            years.forEach(year => {
+              const data = year === "2023" ? data2023[operator] : data2025[operator];
+              datasets.push({
+                label: `${operator} ${year}`,
+                data: data,
+                backgroundColor: colors[`${operator}_${year}`],
+                borderColor: colors[`${operator}_${year}`].replace('0.4', '1').replace('0.8', '1'),
+                borderWidth: 1
+              });
+            });
+          });
+
+          new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: freqLabels,
+              datasets: datasets
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: true },
+                datalabels: {
+                  anchor: 'end',
+                  align: 'top',
+                  formatter: (value) => value > 0 ? value : '',
+                  color: '#000',
+                  font: { weight: 'bold', size: 10 }
+                }
+              },
+              scales: {
+                x: { beginAtZero: true },
+                y: {
+                  beginAtZero: true,
+                  title: { display: true, text: 'Nombre d\'antennes' }
                 }
               }
-            },
-            datalabels: {
-              anchor: 'end',
-              align: 'right',
-              color: '#000',
-              font: { weight: 'bold', size: 10 },
-              formatter: value => value
             }
-          },
-          scales: {
-            x: {
-              beginAtZero: true,
-              ticks: { precision: 0, font: { size: 10 } },
-              grid: {
-                display: false
-              }
-            },
-            y: {
-              ticks: {
-                font: { size: 10 },
-                padding: 0 // Élimination des marges
-              },
-              grid: {
-                display: true,
-                color: '#ddd',
-                lineWidth: 0.5,
-                drawBorder: false // Pas de bordures en double
-              }
-            }
-          },
-          barThickness: 20, // Taille actuelle des barres
-          categoryPercentage: 1.0, // Aucun espace entre les groupes
-          barPercentage: 1.0 // Utilisation maximale de la largeur
-        },
-        plugins: [ChartDataLabels]
-      });
-    }
+          });
+        }
 
-    loadData().then(renderChart).catch(err => console.error("Erreur chargement données :", err));
+        Promise.all([loadData("2023"), loadData("2025")])
+          .then(([data2023, data2025]) => {
+            console.log("Data loaded for 5G evolution chart:", { data2023, data2025 });
+            renderChart(data2023, data2025);
+          })
+          .catch(err => console.error("Error during data load for 5G evolution chart:", err));
+      });
+    })();
   </script>
 </body>
 </html>
